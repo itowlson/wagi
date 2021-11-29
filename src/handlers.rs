@@ -103,8 +103,8 @@ impl WasmRouteHandler {
         let mut ctx = builder.build();
 
         // Could we use a preopened directory of sockets instead of inserting a raw fd?
-        let socksville = Socksville::new("127.0.0.1:7070")?;
-        let socksville_plus_plus = SocksvillePlusPlus::single(socksville);
+        // let socksville = Socksville::new("127.0.0.1:7070")?;
+        let socksville_plus_plus = SocksvillePlusPlus::single("socko", "127.0.0.1:7070");
         // ctx.insert_file(9090, Box::new(socksville), wasi_common::file::FileCaps::WRITE.union(wasi_common::file::FileCaps::READ));
         ctx.push_preopened_dir(Box::new(socksville_plus_plus), "/socksville")?;
 

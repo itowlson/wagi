@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::{ToSocketAddrs};
 use std::path::PathBuf;
@@ -12,7 +13,7 @@ pub struct Socksville {
 }
 
 pub struct SocksvillePlusPlus {
-    socks: Vec<Socksville>,
+    name_to_addr: HashMap<String, String>,
 }
 
 impl Socksville {
@@ -122,8 +123,10 @@ impl WasiFile for Socksville {
 }
 
 impl SocksvillePlusPlus {
-    pub fn single(sock: Socksville) -> Self {
-        Self { socks: vec![sock] }
+    pub fn single(name: impl Into<String>, addr: impl Into<String>) -> Self {
+        Self {
+            name_to_addr: HashMap::from_iter(vec![(name.into(), addr.into())]),
+        }
     }
 }
 
@@ -143,11 +146,15 @@ impl WasiDir for SocksvillePlusPlus {
         fdflags: wasi_common::file::FdFlags,
     ) -> Result<Box<dyn WasiFile>, Error> {
         println!("tried to open {} for r:{}/w:{}", path, read, write);
-        if path == "socko" {
-            Ok(Box::new(self.socks[0].clone()))
-        } else {
-            Err(anyhow::anyhow!("File {} does not exist", path))
+        match self.name_to_addr.get(path) {
+            Some(addr) => Ok(Box::new(Socksville::new(addr)?)),
+            None => Err(anyhow::anyhow!("File {} does not exist", path)),
         }
+        // if path == "socko" {
+        //     Ok(Box::new(self.socks[0].clone()))
+        // } else {
+        //     Err(anyhow::anyhow!("File {} does not exist", path))
+        // }
     }
 
     async fn open_dir(&self, symlink_follow: bool, path: &str) -> Result<Box<dyn WasiDir>, Error> {
