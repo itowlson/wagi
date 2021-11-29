@@ -1,12 +1,18 @@
 use std::io::prelude::*;
 use std::net::{ToSocketAddrs};
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use anyhow::Error;
-use wasi_common::WasiFile;
+use wasi_common::{WasiDir, WasiFile};
 
+#[derive(Clone)]
 pub struct Socksville {
     stm: Arc<RwLock<std::net::TcpStream>>,  // TODO: cf. cap_std::net::TcpStream
+}
+
+pub struct SocksvillePlusPlus {
+    socks: Vec<Socksville>,
 }
 
 impl Socksville {
@@ -112,5 +118,102 @@ impl WasiFile for Socksville {
     }
     async fn writable(&self) -> Result<(), Error> {
         Err(anyhow::anyhow!("no don't"))
+    }
+}
+
+impl SocksvillePlusPlus {
+    pub fn single(sock: Socksville) -> Self {
+        Self { socks: vec![sock] }
+    }
+}
+
+#[async_trait::async_trait]
+impl WasiDir for SocksvillePlusPlus {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    async fn open_file(
+        &self,
+        symlink_follow: bool,
+        path: &str,
+        oflags: wasi_common::file::OFlags,
+        read: bool,
+        write: bool,
+        fdflags: wasi_common::file::FdFlags,
+    ) -> Result<Box<dyn WasiFile>, Error> {
+        println!("tried to open {} for r:{}/w:{}", path, read, write);
+        if path == "socko" {
+            Ok(Box::new(self.socks[0].clone()))
+        } else {
+            Err(anyhow::anyhow!("File {} does not exist", path))
+        }
+    }
+
+    async fn open_dir(&self, symlink_follow: bool, path: &str) -> Result<Box<dyn WasiDir>, Error> {
+        todo!()
+    }
+
+    async fn create_dir(&self, path: &str) -> Result<(), Error> {
+        todo!()
+    }
+    async fn readdir(
+        &self,
+        cursor: wasi_common::dir::ReaddirCursor,
+    ) -> Result<Box<dyn Iterator<Item = Result<wasi_common::dir::ReaddirEntity, Error>> + Send>, Error> {
+        todo!()
+    }
+
+    async fn symlink(&self, old_path: &str, new_path: &str) -> Result<(), Error> {
+        todo!()
+    }
+
+    async fn remove_dir(&self, path: &str) -> Result<(), Error> {
+        todo!()
+    }
+
+    async fn unlink_file(&self, path: &str) -> Result<(), Error> {
+        todo!()
+    }
+
+    async fn read_link(&self, path: &str) -> Result<PathBuf, Error> {
+        todo!()
+    }
+
+    async fn get_filestat(&self) -> Result<wasi_common::file::Filestat, Error> {
+        todo!()
+    }
+
+    async fn get_path_filestat(&self, path: &str, follow_symlinks: bool)
+        -> Result<wasi_common::file::Filestat, Error> {
+        todo!()
+    }
+
+    async fn rename(
+        &self,
+        path: &str,
+        dest_dir: &dyn WasiDir,
+        dest_path: &str,
+    ) -> Result<(), Error> {
+        todo!()
+    }
+
+    async fn hard_link(
+        &self,
+        path: &str,
+        target_dir: &dyn WasiDir,
+        target_path: &str,
+    ) -> Result<(), Error> {
+        todo!()
+    }
+
+    async fn set_times(
+        &self,
+        path: &str,
+        atime: Option<wasi_common::SystemTimeSpec>,
+        mtime: Option<wasi_common::SystemTimeSpec>,
+        follow_symlinks: bool,
+    ) -> Result<(), Error> {
+        todo!()
     }
 }

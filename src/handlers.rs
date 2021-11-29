@@ -16,7 +16,7 @@ use crate::dispatcher::RoutePattern;
 use crate::http_util::{internal_error, parse_cgi_headers};
 use crate::request::{RequestContext, RequestGlobalContext};
 
-use crate::socksville::Socksville;
+use crate::socksville::{Socksville, SocksvillePlusPlus};
 use crate::wasm_module::WasmModuleSource;
 use crate::wasm_runner::{prepare_stdio_streams, prepare_wasm_instance, run_prepared_wasm_instance};
 
@@ -102,8 +102,11 @@ impl WasmRouteHandler {
 
         let mut ctx = builder.build();
 
+        // Could we use a preopened directory of sockets instead of inserting a raw fd?
         let socksville = Socksville::new("127.0.0.1:7070")?;
-        ctx.insert_file(9090, Box::new(socksville), wasi_common::file::FileCaps::WRITE.union(wasi_common::file::FileCaps::READ));
+        let socksville_plus_plus = SocksvillePlusPlus::single(socksville);
+        // ctx.insert_file(9090, Box::new(socksville), wasi_common::file::FileCaps::WRITE.union(wasi_common::file::FileCaps::READ));
+        ctx.push_preopened_dir(Box::new(socksville_plus_plus), "/socksville")?;
 
         Ok(ctx)
     }
