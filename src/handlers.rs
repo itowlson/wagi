@@ -1,5 +1,4 @@
 use std::{collections::HashMap};
-use std::sync::{Arc, RwLock};
 
 use wasi_cap_std_sync::Dir;
 use hyper::{
@@ -68,7 +67,8 @@ impl WasmRouteHandler {
 
         run_prepared_wasm_instance(instance, store, &self.entrypoint, &self.wasm_module_name)?;
 
-        compose_response(redirects.stdout_mutex)
+        let out = redirects.stdout_mutex.read().unwrap();
+        compose_response(&out)
     }
 
     fn build_wasi_context_for_request(&self, req: &Parts, headers: HashMap<String, String>, redirects: crate::wasm_module::IOStreamRedirects) -> Result<WasiCtx, Error> {
@@ -140,7 +140,7 @@ impl WasmRouteHandler {
     }
 }
 
-pub fn compose_response(stdout_mutex: Arc<RwLock<Vec<u8>>>) -> Result<Response<Body>, Error> {
+pub fn compose_response(out: &[u8]) -> Result<Response<Body>, Error> {
     // Okay, once we get here, all the information we need to send back in the response
     // should be written to the STDOUT buffer. We fetch that, format it, and send
     // it back. In the process, we might need to alter the status code of the result.
@@ -150,7 +150,6 @@ pub fn compose_response(stdout_mutex: Arc<RwLock<Vec<u8>>>) -> Result<Response<B
     // The headers can then be parsed separately, while the body can be sent back
     // to the client.
     debug!("composing response");
-    let out = stdout_mutex.read().unwrap();
     let mut last = 0;
     let mut scan_headers = true;
     let mut buffer: Vec<u8> = Vec::new();
